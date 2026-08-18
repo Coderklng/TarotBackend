@@ -20,6 +20,7 @@ const bookingRoutes = require("./routes/bookingRoute");
 const { globalLimiter } = require("./middlewares/rateLimitter");
 const agoraRoutes = require("./routes/agoraRoute");
 const rewardRoutes  = require("./routes/rewardRoutes");
+const ReviewRouter = require("./routes/reviewsRoute");
 const app = express();
 
 app.set('trust proxy', 1);
@@ -55,6 +56,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/", mailerRoutes);
 app.use('/api/agora',agoraRoutes);
 app.use('/api/rewards', rewardRoutes);
+app.use("/api/review",ReviewRouter);
 
 // 6. Global Error Handling Middleware (Must be defined AFTER all routes)
 app.use((err, req, res, next) => {
