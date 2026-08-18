@@ -30,12 +30,12 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
 // CORS Setup for Credentials/Cookies Support
-app.use(
-  cors({
-     origin: '*', // or your frontend domain
-     exposedHeaders: ['x-rtb-fingerprint-id', 'request-id']
-  })
-);
+app.use(cors({
+  origin: 'https://turning-ministry-ongoing-pontiac.trycloudflare.com', // 👈 Aapka exact Next.js frontend URL
+  credentials: true, // 👈 Cookies allow karne ke liye true hona zaroori hai
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Body Parser Error Handling Middleware
 app.use((err, req, res, next) => {

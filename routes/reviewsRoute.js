@@ -1,27 +1,47 @@
 const express = require('express');
 const ReviewRouter = express.Router();
 const Reviews = require('../models/Review');
-const {protect} = require("../middlewares/authMiddleware");
+const { protect } = require("../middlewares/authMiddleware");
 
-// New Review Add Karna
-ReviewRouter.post('/add',protect, async (req, res) => {
+// 1. New Review Add Karna (Protected)
+ReviewRouter.post('/add', protect, async (req, res) => {
   try {
-    const { orderId, userId, astrologerId, rating, comment } = req.body;
+    const { rating, comment } = req.body;
     
-    // Check agar pehle se review hai toh update karein ya error dein
-    const newReview = new Reviews({ orderId, userId, astrologerId, rating, comment });
+    // Auth middleware se logged-in user ki ID mil jayegi
+    const userId = req.user._id;
+
+    const newReview = new Reviews({ 
+      userId, 
+      rating, 
+      comment 
+    });
+    
     await newReview.save();
     
-    res.status(201).json({ success: true, message: "Review added successfully!" });
+    res.status(201).json({ 
+      success: true, 
+      message: "Review added successfully!" 
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 });
 
-// Astrologer ke reviews fetch karna
-ReviewRouter.get('/:astrologerId',protect, async (req, res) => {
-  const reviews = await Reviews.find({ astrologerId: req.params.astrologerId });
-  res.json(reviews);
+// 2. Saare Reviews fetch karna ya user ke hisaab se (Optional)
+ReviewRouter.get('/all', async (req, res) => {
+  try {
+    const reviews = await Reviews.find({})
+      .populate('userId', 'name')
+      .sort({ createdAt: -1 });
+
+    res.status(200).json({ 
+      success: true, 
+      reviews 
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 module.exports = ReviewRouter;
