@@ -37,7 +37,7 @@ const sendBookingEmails = async (order, paymentRef) => {
     }
     sentEmailCache.set(cacheKey, now);
 
-    const frontendUrl = process.env.FRONTEND_URL || "https://mysimon-promotions-latter-consist.trycloudflare.com";
+    const frontendUrl = process.env.FRONTEND_URL || "";
     
     const mode = order.sessionMode || "video";
     let routePath = "/chats/user";

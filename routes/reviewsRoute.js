@@ -1,7 +1,7 @@
 const express = require('express');
 const ReviewRouter = express.Router();
-const Review = require('../models/Review');
-const protect = require("../middlewares/authMiddleware");
+const Reviews = require('../models/Review');
+const {protect} = require("../middlewares/authMiddleware");
 
 // New Review Add Karna
 ReviewRouter.post('/add',protect, async (req, res) => {
@@ -9,7 +9,7 @@ ReviewRouter.post('/add',protect, async (req, res) => {
     const { orderId, userId, astrologerId, rating, comment } = req.body;
     
     // Check agar pehle se review hai toh update karein ya error dein
-    const newReview = new Review({ orderId, userId, astrologerId, rating, comment });
+    const newReview = new Reviews({ orderId, userId, astrologerId, rating, comment });
     await newReview.save();
     
     res.status(201).json({ success: true, message: "Review added successfully!" });
@@ -20,7 +20,7 @@ ReviewRouter.post('/add',protect, async (req, res) => {
 
 // Astrologer ke reviews fetch karna
 ReviewRouter.get('/:astrologerId',protect, async (req, res) => {
-  const reviews = await Review.find({ astrologerId: req.params.astrologerId });
+  const reviews = await Reviews.find({ astrologerId: req.params.astrologerId });
   res.json(reviews);
 });
 

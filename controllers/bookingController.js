@@ -104,7 +104,7 @@ const createBooking = async (req, res) => {
     }
 
     // 3. Dynamic Session URL Generator
-    const frontendUrl = process.env.FRONTEND_URL || 'https://mysimon-promotions-latter-consist.trycloudflare.com';
+    const frontendUrl = process.env.FRONTEND_URL || '';
     
     // Mode-based Direct Route
     let sessionPath = '/chats/user';
