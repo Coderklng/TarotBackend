@@ -15,7 +15,6 @@ const orderRoutes = require("./routes/orderRoute");
 const productRoutes = require("./routes/productRoute");
 const authRoutes = require("./routes/authRoute");
 const paymentRoutes = require("./routes/paymentRoute");
-const cartRoutes = require("./routes/cartRoute");
 const mailerRoutes = require("./routes/mailerRoute");
 const bookingRoutes = require("./routes/bookingRoute");
 const { globalLimiter } = require("./middlewares/rateLimitter");
