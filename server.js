@@ -32,7 +32,7 @@ app.use(cookieParser());
 
 // CORS Setup for Credentials/Cookies Support
 app.use(cors({
-  origin: 'http://localhost:3000', // 👈 Aapka exact Next.js frontend URL
+  origin: '*', // 👈 Aapka exact Next.js frontend URL
   credentials: true, // 👈 Cookies allow karne ke liye true hona zaroori hai
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']

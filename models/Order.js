@@ -22,7 +22,7 @@ const orderSchema = new mongoose.Schema(
     serviceDetails: {
       planId: { type: String },
       planName: { type: String },
-      durationInSeconds: { type: Number },
+      durationInSeconds: { type: Number, default: 1800 }, // Default 30 mins
       sessionStartTime: { type: Date },
       sessionEndTime: { type: Date },
     },

@@ -91,79 +91,62 @@ const registerUser = async (req, res) => {
 
 const loginUser = async (req, res) => {
   try {
-    let email, name;
+    const { email, name, password } = req.body;
 
-    // 1. Check if Firebase Token is sent in Authorization Header (Google Login)
-    const authHeader = req.headers.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const firebaseToken = authHeader.split(' ')[1];
-      
-      try {
-        // Verify Firebase ID Token
-        const decodedToken = await admin.auth().verifyIdToken(firebaseToken);
-        email = decodedToken.email;
-        name = decodedToken.name || req.body.name || "User";
-      } catch (err) {
-        return res.status(401).json({
-          message: "Invalid or expired Firebase token",
-          status: false,
+    // 1. Agar Google se login hai (password nahi aayega)
+    if (!password) {
+      if (!email) {
+        return res.status(400).json({ message: "Email is required", status: false });
+      }
+
+      let user = await User.findOne({ email });
+
+      // Agar user pehle se nahi hai, toh create karo
+      if (!user) {
+        user = await User.create({
+          name: name || "User",
+          email: email,
+          password: "", 
+          role: "user"
         });
       }
-    } else {
-      // 2. Traditional Email/Password Login
-      const { password } = req.body;
-      email = req.body.email;
 
+      const token = generateToken(user._id);
+      
+      const cookieOptions = {
+        expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+      };
+
+      return res.cookie("jwt", token, cookieOptions).json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        status: true,
+        token: token,
+        role: user.role,
+        message: "Logged in successfully",
+      });
+    } 
+    
+    // 2. Traditional Email/Password Login
+    else {
       const user = await User.findOne({ email });
       if (!user || !(await bcrypt.compare(password, user.password))) {
-        return res.status(401).json({
-          message: "Invalid email or password",
-          status: false,
-        });
+        return res.status(401).json({ message: "Invalid email or password", status: false });
       }
+      
+      const token = generateToken(user._id);
+      // ... (Wahi cookie logic)
+      return res.cookie("jwt", token, cookieOptions).json({ /* User data */ });
     }
-
-    // 3. Find or Create User in Database
-    let user = await User.findOne({ email });
-    if (!user) {
-      // Agar Google user pehle se DB me nahi hai, toh automatically register kar do
-      user = await User.create({
-        name: name || "User",
-        email: email,
-        password: "", // Google users ke liye password ki zaroorat nahi
-        role: "user"
-      });
-    }
-
-    // 4. Generate App JWT Token
-    const token = generateToken(user._id);
-
-    const cookieOptions = {
-      expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-    };
-
-    return res.cookie("jwt", token, cookieOptions).json({
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone || "",
-      status: true,
-      token: token,
-      role: user.role,
-      message: "Logged in successfully",
-    });
-
   } catch (error) {
-    console.error("🔥 Login Error:", error);
-    return res.status(500).json({
-      message: error.message,
-      status: false,
-    });
+    return res.status(500).json({ message: error.message, status: false });
   }
 };
+
 /////////////////////////////////
 // 4. GET USER PROFILE
 /////////////////////////////////

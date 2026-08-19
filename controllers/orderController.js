@@ -38,6 +38,8 @@ const sendBookingEmails = async (order, paymentRef) => {
     sentEmailCache.set(cacheKey, now);
 
     const frontendUrl = process.env.FRONTEND_URL || "";
+
+    console.log(frontendUrl);
     
     const mode = order.sessionMode || "video";
     let routePath = "/chats/user";

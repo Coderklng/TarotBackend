@@ -16,8 +16,6 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY || "dummy_key");
 /////////////////////////////////
 // 1. CREATE PAYMENT ORDER / INTENT
 /////////////////////////////////
-// Endpoint: POST /api/transactions/create-order
-// Endpoint: POST /api/transactions/create-order
 const createPaymentOrder = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -41,15 +39,12 @@ const createPaymentOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Valid amount is required" });
     }
 
-    // Lowercase conversion & Fallback normalization
     let gateway = (paymentGateway || "razorpay").toLowerCase().trim();
 
-    // Mapping common aliases to allowed backend types
     if (gateway === "qr" || gateway === "upi" || gateway === "manual_upi") {
-      gateway = "razorpay"; // Ya fir manual UPI flow logic yahan execute karein
+      gateway = "razorpay";
     }
 
-    // 1. Build orderItems properly
     let finalOrderItems = [];
     if (Array.isArray(orderItems) && orderItems.length > 0) {
       finalOrderItems = orderItems;
@@ -64,14 +59,12 @@ const createPaymentOrder = async (req, res) => {
       ];
     }
 
-    // 2. Build serviceDetails properly
     const finalServiceDetails = serviceDetails || {
       planId: planId || "basic",
       planName: planName || "Tarot Reading Session",
       durationInSeconds: 1800,
     };
 
-    // 3. Database mein Order Entry create karo
     const newOrder = await Order.create({
       user: req.user._id,
       orderType: orderType || "service",
@@ -134,6 +127,7 @@ const createPaymentOrder = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
 /////////////////////////////////
 // 2. VERIFY RAZORPAY PAYMENT
 /////////////////////////////////
@@ -177,8 +171,19 @@ const verifyRazorpayPayment = async (req, res) => {
       const order = await Order.findById(targetOrderId);
       
       if (order) {
+        // 💡 Session time calculation added
+        const startTime = new Date();
+        const duration = order.serviceDetails?.durationInSeconds || 1800;
+        const endTime = new Date(startTime.getTime() + duration * 1000);
+
         order.isPaid = true;
-        order.paidAt = Date.now();
+        order.paidAt = startTime;
+        order.orderStatus = "active";
+        
+        if (!order.serviceDetails) order.serviceDetails = {};
+        order.serviceDetails.sessionStartTime = startTime;
+        order.serviceDetails.sessionEndTime = endTime;
+
         order.paymentResult = {
           id: razorpay_payment_id,
           status: "success",
@@ -250,8 +255,19 @@ const verifyStripePayment = async (req, res) => {
     if (paymentIntent.status === "succeeded") {
       const order = await Order.findById(targetOrderId);
       if (order) {
+        // 💡 Session time calculation added
+        const startTime = new Date();
+        const duration = order.serviceDetails?.durationInSeconds || 1800;
+        const endTime = new Date(startTime.getTime() + duration * 1000);
+
         order.isPaid = true;
-        order.paidAt = Date.now();
+        order.paidAt = startTime;
+        order.orderStatus = "active";
+
+        if (!order.serviceDetails) order.serviceDetails = {};
+        order.serviceDetails.sessionStartTime = startTime;
+        order.serviceDetails.sessionEndTime = endTime;
+
         order.paymentResult = {
           id: paymentIntent.id,
           status: "succeeded",
@@ -285,13 +301,8 @@ const verifyStripePayment = async (req, res) => {
 };
 
 /////////////////////////////////
-// 4. CREATE MANUAL UPI ORDER (Papa's QR Code / Direct UTR)
+// 4. CREATE MANUAL UPI ORDER (QR Code / Direct UTR)
 /////////////////////////////////
-// Endpoint: POST /api/transactions/manual-upi
-/////////////////////////////////
-// 4. CREATE MANUAL UPI ORDER (Papa's QR Code / Direct UTR)
-/////////////////////////////////
-// Endpoint: POST /api/transactions/manual-upi
 const createManualUpiOrder = async (req, res) => {
   try {
     if (!req.user || !req.user._id) {
@@ -304,7 +315,6 @@ const createManualUpiOrder = async (req, res) => {
       return res.status(400).json({ success: false, message: "Amount and UTR number are required." });
     }
 
-    // 1. Clean & Validate UTR Format
     const cleanUtr = utrNumber.toString().trim();
     if (cleanUtr.length !== 12 || !/^\d+$/.test(cleanUtr)) {
       return res.status(400).json({
@@ -313,7 +323,6 @@ const createManualUpiOrder = async (req, res) => {
       });
     }
 
-    // 2. Prevent Duplicate UTR (Replay Attack Check)
     const existingTxn = await Transaction.findOne({ paymentId: cleanUtr });
     if (existingTxn) {
       return res.status(400).json({
@@ -322,7 +331,6 @@ const createManualUpiOrder = async (req, res) => {
       });
     }
 
-    // 3. Order document create karo with pending_verification status
     const newOrder = await Order.create({
       user: req.user._id,
       orderType: "service",
@@ -345,7 +353,6 @@ const createManualUpiOrder = async (req, res) => {
       orderStatus: "pending_verification",
     });
 
-    // 4. Transaction Log Save karo
     const transaction = await Transaction.create({
       user: req.user._id,
       order: newOrder._id,
@@ -371,7 +378,6 @@ const createManualUpiOrder = async (req, res) => {
 /////////////////////////////////
 // 5. APPROVE MANUAL PAYMENT (Admin Endpoint)
 /////////////////////////////////
-// Endpoint: PUT /api/transactions/approve-manual/:orderId
 const approveManualPayment = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -385,15 +391,15 @@ const approveManualPayment = async (req, res) => {
     const duration = order.serviceDetails?.durationInSeconds || 3600;
     const endTime = new Date(startTime.getTime() + duration * 1000);
 
-    // Update Order to Active State
     order.isPaid = true;
     order.paidAt = startTime;
-    order.orderStatus = "processing";
+    order.orderStatus = "active"; // Updated to active
+    
+    if (!order.serviceDetails) order.serviceDetails = {};
     order.serviceDetails.sessionStartTime = startTime;
     order.serviceDetails.sessionEndTime = endTime;
     await order.save();
 
-    // Update Transaction Status
     await Transaction.findOneAndUpdate(
       { order: order._id },
       { status: "success" }
@@ -413,7 +419,6 @@ const approveManualPayment = async (req, res) => {
 /////////////////////////////////
 // 6. GET ALL TRANSACTIONS (Admin Dashboard)
 /////////////////////////////////
-// Endpoint: GET /api/payments/all
 const getAllPayments = async (req, res) => {
   try {
     const transactions = await Transaction.find({})
