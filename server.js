@@ -31,7 +31,7 @@ app.use(cookieParser());
 
 // CORS Setup for Credentials/Cookies Support
 app.use(cors({
-  origin: 'https://turning-ministry-ongoing-pontiac.trycloudflare.com', // 👈 Aapka exact Next.js frontend URL
+  origin: 'http://localhost:3000', // 👈 Aapka exact Next.js frontend URL
   credentials: true, // 👈 Cookies allow karne ke liye true hona zaroori hai
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']

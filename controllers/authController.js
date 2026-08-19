@@ -20,9 +20,8 @@ const generateToken = (id) => {
 /////////////////////////////////
 const registerUser = async (req, res) => {
   try {
-    const { uid, name, email, role } = req.body;
+    const { uid, name, email, role, password } = req.body;
 
-    // Field validation (phone hata diya hai, uid add kar diya hai)
     if (!uid || !name || !email) {
       return res.status(400).json({
         message: "Please enter all required fields",
@@ -30,33 +29,14 @@ const registerUser = async (req, res) => {
       });
     }
 
-    const userExists = await User.findOne({ email });
-    if (userExists) {
-      return res.status(400).json({
-        message: "User Already Exists",
-        status: false,
-      });
-    }
-
-    // Note: Agar Google Sign-in hai toh password nahi aayega (wo optional ho sakta hai)
-    // Par agar Email/Password se hai toh password hash hoga.
-    let hashedPassword = "";
-    if (req.body.password) {
-      const salt = await bcrypt.genSalt(10);
-      hashedPassword = await bcrypt.hash(req.body.password, salt);
-    }
-
-    const user = await User.create({
-      uid,
-      name,
-      email,
-      password: hashedPassword, // Google login ke case mein ye blank ya optional ho sakta hai
-      role: role || "user",
-    });
+    // Check if user already exists by email or firebase uid
+    let user = await User.findOne({ email });
 
     if (user) {
+      // User pehle se hai (Chahe Email/Password se ho ya Google se)
+      // Toh error mat do, seedha token generate karke login karwa do!
       const token = generateToken(user._id);
-      res.status(201).json({
+      return res.status(200).json({
         _id: user._id,
         uid: user.uid,
         name: user.name,
@@ -64,14 +44,37 @@ const registerUser = async (req, res) => {
         role: user.role,
         status: true,
         token,
-        message: "Registration Successful",
-      });
-    } else {
-      res.status(400).json({
-        message: "Invalid User Data",
-        status: false,
+        message: "Login Successful (User already exists)",
       });
     }
+
+    // Agar user nahi hai, toh naya create karo
+    let hashedPassword = "";
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(password, salt);
+    }
+
+    user = await User.create({
+      uid,
+      name,
+      email,
+      password: hashedPassword, // Google login ke liye blank ho sakta hai
+      role: role || "user",
+    });
+
+    const token = generateToken(user._id);
+    return res.status(201).json({
+      _id: user._id,
+      uid: user.uid,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      status: true,
+      token,
+      message: "Registration Successful",
+    });
+
   } catch (error) {
     return res.status(500).json({
       message: error.message,
