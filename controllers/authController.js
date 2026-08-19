@@ -20,11 +20,12 @@ const generateToken = (id) => {
 /////////////////////////////////
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { uid, name, email, role } = req.body;
 
-    if (!name || !email || !password || !phone) {
+    // Field validation (phone hata diya hai, uid add kar diya hai)
+    if (!uid || !name || !email) {
       return res.status(400).json({
-        message: "Please enter all fields",
+        message: "Please enter all required fields",
         status: false,
       });
     }
@@ -37,13 +38,19 @@ const registerUser = async (req, res) => {
       });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    // Note: Agar Google Sign-in hai toh password nahi aayega (wo optional ho sakta hai)
+    // Par agar Email/Password se hai toh password hash hoga.
+    let hashedPassword = "";
+    if (req.body.password) {
+      const salt = await bcrypt.genSalt(10);
+      hashedPassword = await bcrypt.hash(req.body.password, salt);
+    }
 
     const user = await User.create({
+      uid,
       name,
       email,
-      password: hashedPassword,
+      password: hashedPassword, // Google login ke case mein ye blank ya optional ho sakta hai
       role: role || "user",
     });
 
@@ -51,6 +58,7 @@ const registerUser = async (req, res) => {
       const token = generateToken(user._id);
       res.status(201).json({
         _id: user._id,
+        uid: user.uid,
         name: user.name,
         email: user.email,
         role: user.role,
