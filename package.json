@@ -21,9 +21,12 @@
     "express": "^4.22.2",
     "express-rate-limit": "^8.6.2",
     "express-session": "^1.19.0",
+    "firebase-admin": "^14.2.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.1",
+    "multer": "^2.2.0",
     "nodemailer": "^9.0.5",
+    "pdf-parse": "^2.4.5",
     "razorpay": "^2.9.8",
     "stripe": "^22.4.0"
   },
