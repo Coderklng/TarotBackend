@@ -12,7 +12,7 @@ require("dotenv").config();
 /////////////////////////////////
 // Secret key ko process.env.JWT_SECRET se sync kiya hai
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || process.env.SECRET_KEY, {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
     expiresIn: "30d",
   });
 };

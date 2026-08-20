@@ -12,9 +12,9 @@ const User = require("../models/Users");
 const protect = async (req, res, next) => {
   let token;
 
-  // Pehle Cookie check karo, agar cookie na ho toh Bearer Header check karo
-  if (req.cookies && req.cookies.jwt) {
-    token = req.cookies.jwt;
+  // Yahan 'token' aur 'jwt' dono check karwa lo taaki miss na ho
+  if (req.cookies && (req.cookies.token || req.cookies.jwt)) {
+    token = req.cookies.token || req.cookies.jwt;
   } else if (
     req.headers.authorization &&
     req.headers.authorization.startsWith("Bearer")
@@ -29,14 +29,14 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.SECRET_KEY);
+    // Agar token ke sath extra spaces aa rahe ho toh .trim() zaroori hai
+    const decoded = jwt.verify(token.trim(), process.env.SECRET_KEY);
     req.user = await User.findById(decoded.id).select("-password");
     next();
   } catch (error) {
     res.status(401).json({ message: error.message });
   }
 };
-
 
 /////////////////////////////////
 // 2. ADMIN ROLE MIDDLEWARE
