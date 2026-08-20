@@ -1,36 +1,26 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.ADMIN_EMAIL, // Is Gmail ID se mail send hoga
-    pass: process.env.SMTP_PASSWORD, 
-  },
-});
+// Resend ko API Key ke sath initialize kiya
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ SMTP Connection Error:', error);
-  } else {
-    console.log('🚀 SMTP Server is ready to send emails');
-  }
-});
+// Resend HTTP API use karta hai, isliye SMTP verify ki zaroorat nahi hai.
+console.log('🚀 Resend Email Service is ready');
 
 const sendEmail = async (to, subject, text, html = null) => {
   try {
-    const mailOptions = {
-      from: `"Kripalini Tarot" <${process.env.ADMIN_EMAIL}>`, // Fixed: Same variable as auth
-      to, // 👈 Target Email (Dynamic)
-      subject,
-      text,
+    const data = await resend.emails.send({
+      // Free testing ke liye 'onboarding@resend.dev' use hota hai
+      from: 'Kripalini Tarot <onboarding@resend.dev>',
+      to: [to],
+      subject: subject,
+      text: text,
       ...(html && { html }),
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-    console.log('📧 Email sent successfully to %s: %s', to, info.messageId);
-    return info;
+    console.log('📧 Email sent successfully via Resend:', data);
+    return data;
   } catch (error) {
-    console.error('❌ Error sending email:', error.message);
+    console.error('❌ Error sending email via Resend:', error.message);
     throw error;
   }
 };
