@@ -169,6 +169,7 @@ const createOrder = async (req, res) => {
 
     const order = new Order({
       user: req.user._id,
+      userEmail: req.user.email || req.body.customerEmail || "", // 🔥 Saved direct email here
       orderType: finalOrderType,
       sessionMode: finalSessionMode,
       orderItems: finalOrderItems,
@@ -278,6 +279,7 @@ const updateSessionMode = async (req, res) => {
     if (date) order.bookingDate = date;
     if (time) order.bookingTime = time;
     
+    // 🔥 Explicitly update userEmail if provided in request body
     if (customerEmail && customerEmail.trim() !== "") {
       order.userEmail = customerEmail.trim();
     }
@@ -290,7 +292,7 @@ const updateSessionMode = async (req, res) => {
     const sessionLink = generateSessionLink(order._id, mode);
 
     try {
-      await sendBookingEmails(order, order.paymentResult?.id || order.utrNumber || "Direct-Session-Setup");
+      await sendBookingEmails(order, order.paymentResult?.id || order.paymentDetails?.utrNumber || "Direct-Session-Setup");
     } catch (emailErr) {
       console.error("Email dispatch warning in updateSessionMode:", emailErr);
     }
@@ -323,8 +325,8 @@ const submitUTR = async (req, res) => {
       return res.status(404).json({ success: false, message: "Order not found" });
     }
 
-    order.utrNumber = utrNumber.trim();
-    order.paymentStatus = "pending_verification";
+    order.paymentDetails = { ...(order.paymentDetails || {}), utrNumber: utrNumber.trim() };
+    order.orderStatus = "pending_verification";
     await order.save();
 
     return res.status(200).json({ success: true, message: "UTR submitted successfully." });
@@ -348,14 +350,13 @@ const verifyUTRByAdmin = async (req, res) => {
     if (status === "approved") {
       const wasAlreadyPaid = order.isPaid;
       order.isPaid = true;
-      order.paymentStatus = "completed";
       order.orderStatus = "active";
       order.paidAt = order.paidAt || Date.now();
       await order.save();
 
       if (!wasAlreadyPaid) {
         try {
-          await sendBookingEmails(order, `UTR-${order.utrNumber}`);
+          await sendBookingEmails(order, `UTR-${order.paymentDetails?.utrNumber || "Manual"}`);
         } catch (emailErr) {
           console.error("Email dispatch warning:", emailErr);
         }
@@ -363,7 +364,7 @@ const verifyUTRByAdmin = async (req, res) => {
 
       return res.status(200).json({ success: true, message: "Payment approved & email dispatched." });
     } else {
-      order.paymentStatus = "failed";
+      order.orderStatus = "failed";
       await order.save();
       return res.status(400).json({ success: false, message: "Payment rejected." });
     }

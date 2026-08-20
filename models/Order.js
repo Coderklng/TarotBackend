@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const orderSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+    userEmail: { type: String }, // 🔥 Added direct email for reliable dispatch
     orderType: { type: String, enum: ["product", "service"], default: "service" },
     orderItems: [
       {
