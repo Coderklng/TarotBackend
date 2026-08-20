@@ -2,7 +2,6 @@ const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser");
-
 // 1. Load Environment Variables FIRST
 dotenv.config();
 
@@ -23,7 +22,8 @@ const rewardRoutes  = require("./routes/rewardRoutes");
 const ReviewRouter = require("./routes/reviewsRoute");
 const router = require("./routes/chatRoute");
 const app = express();
-
+// Database connection ke just niche ya upar ye line daal de
+require("./config/mailer");
 app.set('trust proxy', 1);
 // 4. Global Middlewares
 app.use(express.json());
