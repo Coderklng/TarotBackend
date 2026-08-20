@@ -12,11 +12,26 @@ const razorpay = new Razorpay({
 const sentEmailCache = new Map();
 
 /////////////////////////////////
+// HELPER: BUILD SESSION LINK
+/////////////////////////////////
+const generateSessionLink = (orderId, mode) => {
+  const frontendUrl = process.env.FRONTEND_URL || "";
+  let routePath = "/chats/user";
+  
+  if (mode === "video") {
+    routePath = "/video";
+  } else if (mode === "audio") {
+    routePath = "/audio";
+  }
+  
+  return `${frontendUrl}${routePath}?orderId=${orderId}&mode=${mode}`;
+};
+
+/////////////////////////////////
 // HELPER: DISPATCH CONFIRMATION EMAILS
 /////////////////////////////////
 const sendBookingEmails = async (order, paymentRef) => {
   try {
-    // 💡 Priority: order.userEmail (jo manual type kiya) > database user email
     const userEmail = order.userEmail || (order.user ? order.user.email : null);
     const userName = order.user ? (order.user.name || order.user.username) : "Valued Client";
     const serviceName = order.serviceDetails?.planName || "Tarot Reading Session";
@@ -37,23 +52,12 @@ const sendBookingEmails = async (order, paymentRef) => {
     }
     sentEmailCache.set(cacheKey, now);
 
-    const frontendUrl = process.env.FRONTEND_URL || "";
-
-    console.log(frontendUrl);
-    
     const mode = order.sessionMode || "video";
-    let routePath = "/chats/user";
     let modeText = "Live Chat";
-    
-    if (mode === "video") {
-      routePath = "/video";
-      modeText = "Live Video Session";
-    } else if (mode === "audio") {
-      routePath = "/audio";
-      modeText = "Live Audio Session";
-    }
+    if (mode === "video") modeText = "Live Video Session";
+    else if (mode === "audio") modeText = "Live Audio Session";
 
-    const sessionLink = `${frontendUrl}${routePath}?orderId=${order._id}&mode=${mode}`;
+    const sessionLink = generateSessionLink(order._id, mode);
     const adminEmail = (process.env.ADMIN_EMAIL || "").toLowerCase();
 
     // 1. CLIENT EMAIL
@@ -258,7 +262,7 @@ const verifyPayment = async (req, res) => {
 /////////////////////////////////
 const updateSessionMode = async (req, res) => {
   try {
-    const { orderId, order_id, mode, date, time, customerEmail } = req.body;
+    const { orderId, order_id, mode, date, time, customerEmail, customerPhone } = req.body;
     const targetOrderId = orderId || order_id;
 
     if (!targetOrderId || !mode) {
@@ -274,12 +278,16 @@ const updateSessionMode = async (req, res) => {
     if (date) order.bookingDate = date;
     if (time) order.bookingTime = time;
     
-    // 💡 Agar frontend se manual email di gayi hai, toh order mein save kar lo
     if (customerEmail && customerEmail.trim() !== "") {
       order.userEmail = customerEmail.trim();
     }
+    if (customerPhone && customerPhone.trim() !== "") {
+      order.customerPhone = customerPhone.trim();
+    }
     
     await order.save();
+
+    const sessionLink = generateSessionLink(order._id, mode);
 
     try {
       await sendBookingEmails(order, order.paymentResult?.id || order.utrNumber || "Direct-Session-Setup");
@@ -291,6 +299,7 @@ const updateSessionMode = async (req, res) => {
       success: true,
       message: "Session mode updated & email dispatched successfully",
       sessionMode: order.sessionMode,
+      sessionLink: sessionLink,
     });
   } catch (error) {
     console.error("Update Session Mode Error:", error);
